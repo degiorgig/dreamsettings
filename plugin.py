@@ -188,13 +188,13 @@ class MyMenu(Screen):
 	  print "\n[MyMenu] back\n"
 	  print result
 		
-###########################################################################
+########################################################################
 
 def main(session, **kwargs):
   #print "\n[CallMyMsg] start\n"	
   session.open(MyMenu)
 
-###########################################################################
+########################################################################
 
 def installChannels(self, channelZipFile):
   self.session.openWithCallback(self.cancel, Console, title = _("Restore is running..."), cmdlist = ["tar -xzvf " + channelZipFile + " -C /"], finishedCallback = self.updateFinishedCB, closeOnSuccess = True)
