@@ -13,17 +13,22 @@ import zipfile
 import os
 import urllib
 
+###########################################################################
+#remote location
 CONST_URL = "http://settings.rubyrolls.com"
+#remote settings directory
 CONST_SETTINGS_DIR = "/settings/enigma"
 
+#download the list of available settings
 def getList(inUrl):
   response = urllib2.urlopen(inUrl)
   html = response.read()
   return html
 
-def dowloadFile(inFile, enigmaVersion):
-  url = CONST_URL+CONST_SETTINGS_DIR+enigmaVersion+"/"+urllib.quote(inFile)
-  print url
+#download enigma setting  
+def dowloadFile(inFile, inEnigmaVersion):
+  url = CONST_URL + CONST_SETTINGS_DIR + inEnigmaVersion + "/" + urllib.quote(inFile) #quote to avoid issue with special chars
+  #print url
   
   file_name = url.split('/')[-1]
   u = urllib2.urlopen(url)
@@ -47,162 +52,171 @@ def dowloadFile(inFile, enigmaVersion):
     print status,
 
   f.close()
-		
-class MySelectionScreen(Screen):
-  skin = """
-    <screen position="100,150" size="460,400" title="Selection Screen for Enigma Settings" >
-      <widget name="myText" position="10,10" size="400,40" font="Regular;22"/>
-      <widget name="myMenu2" position="10,50" size="400,400" scrollbarMode="showOnDemand" />
-    </screen>"""
+###########################################################################
+
+#first screen
+class FirstMenu(Screen):
 	
-  def __init__(self, session, enigma, result):
-    self.skin = MySelectionScreen.skin
-    self.session = session
-    
-    self["myText"] = Label()		
-    self["myText"].setText("Enigma "+ enigma +" settings")
-    self.version = enigma
+	skin = """
+		<screen position="100,150" size="460,400" title="Download new setting from the server" >
+			<widget name="title" position="10,10" size="400,40" font="Regular;22"/>
+			<widget name="menu" position="10,50" size="400,200" scrollbarMode="showOnDemand" />
+		</screen>"""
+
+	def __init__(self, session, args = 0):
+		self.session = session
+		list = []
+		list.append((_("Enigma 1 settings"), "one"))
+		list.append((_("Enigma 2 settings"), "two"))
+		list.append((_("Reload Enigma Settins"), "three"))
+		list.append((_("Exit"), "exit"))
 		
-    elements = []
-    lines = result.split('\n')
+		Screen.__init__(self, session)
+		self["menu"] = MenuList(list)
 
-    for line in lines:
-	#loop over the lines array
-	if line.strip(): #check line is not empty
-	  element = line.split('-') # split over the date - element separator
-	  elements.append(element[1].strip('\n'))
-	
-	  #debug content		
-	  #for el in elements:
-	  #  print el
-		
-	  list = []
-	  for el in elements:
-	    list.append((_(el), el))
-	    list.append((_("Exit"), "exit"))
+		self["title"] = Label()		
+		self["title"].setText("Choose the settings you want to install\n")
 
-	    Screen.__init__(self, session)		
-	    self["myMenu2"] = MenuList(list)
-	    self["myActionMap"] = ActionMap(["SetupActions"],
-	    {
-	      "ok": self.go,
-	      "cancel": self.cancel
-	    }, -1)
+		self["myActionMap"] = ActionMap(["SetupActions"],
+		{
+			"ok": self.go,
+			"cancel": self.cancel
+		}, -1)
 
+	#go method is called after the selection of a menu 
 	def go(self):
-	  returnValue = self["myMenu2"].l.getCurrentSelection()[1]
-	  #print "\n[MyMenu2] returnValue: " + returnValue + "\n"
-	  #print " VERSION: "+self.version +"\n"
-		
-	  if returnValue is not None:
-	    if returnValue is "exit":
-	      print "\n[MyMenu2] cancel\n"
-	      self.close(None)
-	    else:
-	      #download the selected setting
-	      dowloadFile(returnValue, self.version)
-	      installChannels(self, returnValue)
-	      
-	      if self.version is "2":
-		self.session.open(MessageBox,_("You selected entry %s for enigma2!") % (returnValue), MessageBox.TYPE_INFO)	
-	      else:
-		self.session.open(MessageBox,_("You selected entry %s for enigma1!") % (returnValue), MessageBox.TYPE_INFO)	
-	
-	def cancel(self):
-	  print "\n[MyMenu] cancel\n"
-	  self.close()	
-	
-	def updateFinishedCB(self,retval = None):
-	  self.close(True)
-		
-class MyMenu(Screen):
-	
-  skin = """
-    <screen position="100,150" size="460,400" title="Download new setting from the server" >
-      <widget name="myText" position="10,10" size="400,40" font="Regular;22"/>
-      <widget name="myMenu" position="10,50" size="400,200" scrollbarMode="showOnDemand" />
-    </screen>"""
-
-    def __init__(self, session, args = 0):
-      self.session = session
-      
-      list = []
-      list.append((_("Download Enigma 1 Settings"), "one"))
-      list.append((_("Download Enigma 2 Settings"), "two"))
-      list.append((_("Reload Enigma Settins"), "three"))
-      list.append((_("Exit"), "exit"))
-      
-      Screen.__init__(self, session)
-      self["myMenu"] = MenuList(list)
-      self["myText"] = Label()		
-      self["myText"].setText("Choose the Settings you want to install")
-      self["myActionMap"] = ActionMap(["SetupActions"],
-      {
-	"ok": self.go,
-	"cancel": self.cancel
-      }, -1)
-
-      def go(self):
-	returnValue = self["myMenu"].l.getCurrentSelection()[1]
-	#print "\n[MyMenu] returnValue: " + returnValue + "\n"
-	try:
-	  if returnValue is not None:
-	    if returnValue is "one":
-		#get the list of settings present in the directory
-		#todo get the index for the enigma 1
-		result = getList(CONST_URL+"?e=1")			
-		self.session.openWithCallback(self.back, MySelectionScreen, "1", result)
-	    elif returnValue is "two":
-		#todo get the index for the enigma 2
-		result = getList(CONST_URL+"?e=2")
-		self.session.openWithCallback(self.back, MySelectionScreen, "2", result)
-	    else:
-		#print "\n[MyMenu] cancel\n"
-		self.close(None)
+		returnValue = self["menu"].l.getCurrentSelection()[1]
+		#print "\n[FirstMenu] returnValue: " + returnValue + "\n"
+		try:
+			if returnValue is not None:
+				if returnValue is "one":
+					#get the list of settings present in the directory
+					result = getList(CONST_URL+"?e=1")			
+					self.session.openWithCallback(self.back, SelectionMenu, "1", result)
+				elif returnValue is "two":
+					result = getList(CONST_URL+"?e=2")
+					self.session.openWithCallback(self.back, SelectionMenu, "2", result)
+				elif returnValue is "three":
+					#TODO implement refresh of settings
+					self.session.open(MessageBox,_("HERE COMES THE REFRESH OF THE SETTINGS!"), MessageBox.TYPE_INFO)	
+				else:
+					self.close(None)
 		#exception section
-	except Exception as inst:
-	  self.session.open(MessageBox,_("Download error %s!") % (inst), MessageBox.TYPE_INFO)
-	  print "\n---------------ERROR---------------------------------"	
-	  print "[ProgressBar] error"	
-	  print type(inst)     # the exception instance
-	  print inst
-	  print "-----------------------------------------------------\n"		
-		
-	def myMsg(self, entry):
-	  self.session.open(MessageBox,_("You selected entry no. %s!") % (entry), MessageBox.TYPE_INFO)	
+		except Exception as inst:
+			self.session.open(MessageBox,_("Download error %s!") % (inst), MessageBox.TYPE_INFO)
+			print "\n---------------ERROR---------------------------------"	
+			print type(inst)     # the exception instance
+			print inst
+			print "-----------------------------------------------------\n"	
 	
+	def myMsg(self, entry):
+		self.session.open(MessageBox,_("You selected entry no. %s!") % (entry), MessageBox.TYPE_INFO)
+		
 	# Restart the GUI if requested by the user.
 	def restartGUI(self, answer):
-	  if answer is True:
-	    self.session.open(TryQuitMainloop, 3)
-	  else:
-	    self.close()	
+		if answer is True:
+			self.session.open(TryQuitMainloop, 3)
+		else:
+			self.close()	
 
 	def cancel(self, result):
-	  print "\n[MyMenu] cancel\n"
-	  print result
-	  self.close(None)
+		print "\n[FirstMenu] cancel\n"
+		print result
+		self.close(None)
 
 	#callback from the top menu	
 	def back(self, result):
-	  print "\n[MyMenu] back\n"
-	  print result
+		print "\n[FirstMenu] back\n"
+		print result
+
+#second screen
+class SelectionMenu(Screen):
+	skin = """
+		<screen position="100,150" size="460,400" title="Selection screen for Enigma Settings" >
+			<widget name="title" position="10,10" size="400,40" font="Regular;22"/>
+			<widget name="menu" position="10,50" size="400,400" scrollbarMode="showOnDemand" />
+		</screen>"""
+	
+	def __init__(self, session, enigma, result):
+		self.skin = SelectionMenu.skin
+		self.session = session
+	
+		self["title"] = Label()		
+		self["title"].setText("Enigma "+ enigma +" settings")
+		self.version = enigma
 		
-########################################################################
+		elements = []
+		lines = result.split('\n')
+							
+		for line in lines:
+		#loop over the lines array
+			if line.strip(): #check line is not empty
+				element = line.split('-') # split over the date - element separator
+				elements.append(element[1].strip('\n'))
+				#print element[1]+'\n'	
+		#debug content		
+		#for el in elements:
+		#	print el
+		
+		list = []
+		for el in elements:
+			list.append((_(el), el))
+		list.append((_("Exit"), "exit"))
+		
+		Screen.__init__(self, session)		
+
+		self["menu"] = MenuList(list)
+		self["myActionMap"] = ActionMap(["SetupActions"],
+		{
+			"ok": self.go,
+			"cancel": self.cancel
+		}, -1)
+
+	def go(self):
+		returnValue = self["menu"].l.getCurrentSelection()[1]
+		#print "\n[FirstMenu2] returnValue: " + returnValue + "\n"
+		#print " VERSION: "+self.version +"\n"
+				
+		if returnValue is not None:
+			if returnValue is "exit":
+				#print "\n[FirstMenu2] cancel\n"
+				self.close(None)
+			else:
+			  #download the selected setting
+			  dowloadFile(returnValue, self.version)
+			  #installation of the channels
+			  installChannels(self, returnValue)
+			  
+			  #success message
+			  self.session.open(MessageBox,_("Installation successfully completed!"), MessageBox.TYPE_INFO)
+			  
+			  #if self.version is "2":
+				#self.session.open(MessageBox,_("You selected entry %s for enigma2!") % (returnValue), MessageBox.TYPE_INFO)	
+			  #else:
+			  	#self.session.open(MessageBox,_("You selected entry %s for enigma1!") % (returnValue), MessageBox.TYPE_INFO)	
+	
+	def cancel(self):
+		#print "\n[FirstMenu] cancel\n"
+		self.close(None)
+		
+	def updateFinishedCB(self,retval = None):
+		self.close(True)
+		
+###########################################################################
 
 def main(session, **kwargs):
-  #print "\n[CallMyMsg] start\n"	
-  session.open(MyMenu)
+	#print "\n[CallMyMsg] start\n"	
+	session.open(FirstMenu)
 
-########################################################################
+###########################################################################
 
 def installChannels(self, channelZipFile):
-  self.session.openWithCallback(self.cancel, Console, title = _("Restore is running..."), cmdlist = ["tar -xzvf " + channelZipFile + " -C /"], finishedCallback = self.updateFinishedCB, closeOnSuccess = True)
-	
+	self.session.openWithCallback(self.cancel, Console, title = _("Restore is running..."), cmdlist = ["tar -xzvf " + channelZipFile + " -C /"], finishedCallback = self.updateFinishedCB, closeOnSuccess = True)
+
 def Plugins(**kwargs):
-  return PluginDescriptor(
-    name="Download Settings",
-    description="Plugin to download the setting from a website",
-    where = PluginDescriptor.WHERE_PLUGINMENU,
-    icon="ihad_tut.png",
-    fnc=main)
+	return PluginDescriptor(
+		name="Download Settings",
+		description="Plugin to download the setting from a website",
+		where = PluginDescriptor.WHERE_PLUGINMENU,
+		icon="ihad_tut.png",
+		fnc=main)
