@@ -218,5 +218,5 @@ def Plugins(**kwargs):
 		name="Download Settings",
 		description="Plugin to download the setting from a website",
 		where = PluginDescriptor.WHERE_PLUGINMENU,
-		icon="ihad_tut.png",
+		icon="dreamsettings.png",
 		fnc=main)
